@@ -7,9 +7,14 @@
   implement a simple ringbuffer of bytes
  */
 
+static inline uint32_t align_power2(uint32_t u)
+{
+    return 1U << ((sizeof(u) * 8) - __builtin_clz(u - 1));
+}
+
 ByteBuffer::ByteBuffer(uint32_t _size)
 {
-    size = _size;
+    size = align_power2(_size);
     buf = new uint8_t[size];
     head = tail = 0;
 }
@@ -26,7 +31,7 @@ void ByteBuffer::set_size(uint32_t _size)
 {
     uint8_t *oldbuf = buf;
     head = tail = 0;
-    size = _size;
+    size = align_power2(_size);
     buf = new uint8_t[size];
     delete [] oldbuf;
 }
@@ -89,7 +94,7 @@ bool ByteBuffer::advance(uint32_t n)
     if (n > available()) {
         return false;
     }
-    head = (head + n) % size;
+    head = (head + n) & (size - 1);
     return true;
 }
 
@@ -152,7 +157,7 @@ int ByteBuffer::reserve(ByteBuffer::IoVec iovec[2], uint32_t len)
 
         n = len - n;
         if (n > 0) {
-            iovec[1].data = &buf[(tail + n) % size];
+            iovec[1].data = &buf[(tail + n) & (size - 1)];
             iovec[1].len = n;
             return 2;
         }
@@ -188,5 +193,5 @@ int16_t ByteBuffer::peek(uint32_t ofs) const
     if (ofs >= available()) {
         return -1;
     }
-    return buf[(head+ofs)%size];
+    return buf[(head+ofs) & (size - 1)];
 }
